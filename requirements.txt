@@ -12,3 +12,4 @@ requests
 pillow
 
 seaborn
+nltk
