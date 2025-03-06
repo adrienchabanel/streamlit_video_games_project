@@ -56,3 +56,4 @@ altair
 requests
 pillow
 base64
+plotly
