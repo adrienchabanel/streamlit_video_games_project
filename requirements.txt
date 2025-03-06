@@ -43,3 +43,16 @@ watchdog==6.0.0
 matplotlib
 lightgbm
 scikit-learn
+streamlit
+pandas
+numpy
+matplotlib
+lightgbm
+scikit-learn
+joblib
+pygame
+plotly
+altair
+requests
+pillow
+base64
