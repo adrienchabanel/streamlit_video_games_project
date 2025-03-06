@@ -13,3 +13,4 @@ pillow
 
 seaborn
 nltk
+statsmodels
