@@ -1,8 +1,12 @@
 import pygame
 import sys
 
-# Initialisation de Pygame
-pygame.init()
+# Initialisation de Pygame avec gestion d'erreur
+try:
+    pygame.init()
+except pygame.error as e:
+    print(f"Erreur lors de l'initialisation de Pygame : {e}")
+    sys.exit()
 
 # Définition des constantes
 SCREEN_WIDTH = 1000
@@ -29,8 +33,8 @@ font_path = "PressStart2P-Regular.ttf"
 try:
     font = pygame.font.Font(font_path, 15)
 except FileNotFoundError:
-    print(f"Police {font_path} introuvable.")
-    sys.exit()
+    print(f"Police {font_path} introuvable, chargement de la police par défaut.")
+    font = pygame.font.SysFont(None, 20)  # Police de secours
 
 # Classe pour la brique
 class Brick(pygame.sprite.Sprite):
@@ -43,7 +47,7 @@ class Brick(pygame.sprite.Sprite):
         self.rect.y = y
 
     def draw(self, surface):
-        pygame.draw.rect(surface, self.image, self.rect)
+        surface.blit(self.image, self.rect.topleft)
         pygame.draw.rect(surface, WHITE, self.rect, 2)
 
 # Classe pour la raquette
@@ -69,9 +73,7 @@ class Ball(pygame.sprite.Sprite):
         super().__init__()
         self.image = pygame.Surface((BALL_RADIUS * 2, BALL_RADIUS * 2), pygame.SRCALPHA)
         pygame.draw.circle(self.image, YELLOW, (BALL_RADIUS, BALL_RADIUS), BALL_RADIUS)
-        self.rect = self.image.get_rect()
-        self.rect.x = SCREEN_WIDTH // 2
-        self.rect.y = SCREEN_HEIGHT // 2
+        self.rect = self.image.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
         self.speed_x = 3
         self.speed_y = -3
 
@@ -86,8 +88,7 @@ class Ball(pygame.sprite.Sprite):
         if self.rect.bottom >= SCREEN_HEIGHT:
             global lives
             lives -= 1
-            self.rect.x = SCREEN_WIDTH // 2
-            self.rect.y = SCREEN_HEIGHT // 2
+            self.rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
             if lives < 0:
                 show_game_over()
             else:
@@ -102,61 +103,29 @@ class Ball(pygame.sprite.Sprite):
             if len(bricks) == 0:
                 show_you_win()
 
-# Fonction pour afficher le texte
-def draw_text(surface, text, font, color, rect, aa=False, bkg=None):
-    font_surface = font.render(text, aa, color, bkg)
+# Fonction pour afficher du texte
+def draw_text(surface, text, font, color, rect):
+    font_surface = font.render(text, True, color)
     font_rect = font_surface.get_rect(center=rect.center)
     surface.blit(font_surface, font_rect.topleft)
 
-# Fonction pour afficher la page d'instructions
-def show_instructions():
-    screen.fill(BACKGROUND_COLOR)
-    instructions = [
-        "Instructions du jeu Casse-Briques",
-        "Utilisez les flèches gauche et droite pour déplacer la raquette.",
-        "Le but du jeu est de détruire toutes les briques avec la balle.",
-        "Vous avez 2 vies.",
-        "Appuyez sur le bouton Commencer pour débuter le jeu.",
-    ]
-    for i, line in enumerate(instructions):
-        draw_text(screen, line, font, WHITE, screen.get_rect().move(0, i * 40 + 50))
-    pygame.draw.rect(screen, WHITE, start_button)
-    draw_text(screen, "Commencer", font, BACKGROUND_COLOR, start_button)
-    pygame.display.flip()
-
-# Fonction pour afficher la page de Game Over
+# Fonction pour afficher Game Over
 def show_game_over():
     screen.fill(BACKGROUND_COLOR)
-    font = pygame.font.Font(font_path, 25)
-    draw_text(screen, "Game Over", font, RED, screen.get_rect().move(0, -50))
+    font_large = pygame.font.Font(font_path, 25)
+    draw_text(screen, "Game Over", font_large, RED, screen.get_rect().move(0, -50))
 
-    # Ajuster la taille du rectangle pour "Quitter"
     pygame.draw.rect(screen, WHITE, quit_button)
     draw_text(screen, "Quitter", font, BACKGROUND_COLOR, quit_button)
 
-    # Ajuster la taille du rectangle pour "Recommencer"
-    restart_button.width = 350  # Ajuster la largeur pour s'assurer que tout le texte rentre
+    restart_button.width = 200
     pygame.draw.rect(screen, WHITE, restart_button)
     draw_text(screen, "Recommencer", font, BACKGROUND_COLOR, restart_button)
-    
+
     pygame.display.flip()
     wait_for_input()
 
-# Fonction pour afficher la page de You Win
-def show_you_win():
-    screen.fill(BACKGROUND_COLOR)
-    font = pygame.font.Font(font_path, 36)
-    draw_text(screen, "You Win Perfect", font, RED, screen.get_rect().move(0, -50))
-    restart_button.width = 400  # Ajuster la largeur pour s'assurer que tout le texte rentre
-    pygame.draw.rect(screen, WHITE, quit_button)
-    draw_text(screen, "Quitter", font, BACKGROUND_COLOR, quit_button)
-
-    pygame.draw.rect(screen, WHITE, restart_button)
-    draw_text(screen, "Recommencer", font, BACKGROUND_COLOR, restart_button)
-    pygame.display.flip()
-    wait_for_input()
-
-# Fonction pour attendre l'entrée de l'utilisateur
+# Fonction pour attendre une action de l'utilisateur
 def wait_for_input():
     while True:
         for event in pygame.event.get():
@@ -170,16 +139,17 @@ def wait_for_input():
                 if restart_button.collidepoint(event.pos):
                     main()
 
-# Création des groupes de sprites
+# Création des briques
 def create_bricks():
     bricks = pygame.sprite.Group()
     colors = [RED, GREEN, BLUE]
-    for i in range(9):  # Augmenter le nombre de colonnes
+    for i in range(9):
         for j in range(5):
             brick = Brick(i * (BRICK_WIDTH + 13) + 35, j * (BRICK_HEIGHT + 10) + 35, colors[j % len(colors)])
             bricks.add(brick)
     return bricks
 
+# Fonction principale du jeu
 def main():
     global bricks, paddle, ball, all_sprites, lives
     lives = LIVES
@@ -188,18 +158,12 @@ def main():
     paddle = Paddle()
     ball = Ball()
 
-    all_sprites = pygame.sprite.Group()
-    all_sprites.add(bricks)
-    all_sprites.add(paddle)
-    all_sprites.add(ball)
+    all_sprites = pygame.sprite.Group(bricks, paddle, ball)
 
-    # Définition des boutons
-    global start_button, quit_button, restart_button
-    start_button = pygame.Rect((SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 50, 200, 50))
-    quit_button = pygame.Rect((SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 50, 200, 50))
-    restart_button = pygame.Rect((SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 150, 200, 50))
+    global quit_button, restart_button
+    quit_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 50, 200, 50)
+    restart_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 150, 200, 50)
 
-    # Boucle principale
     clock = pygame.time.Clock()
     game_started = False
 
@@ -209,19 +173,14 @@ def main():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN and not game_started:
-                if start_button.collidepoint(event.pos):
-                    game_started = True
+                game_started = True
 
         if game_started:
             all_sprites.update()
-
             screen.fill(BACKGROUND_COLOR)
             all_sprites.draw(screen)
             pygame.display.flip()
-
             clock.tick(60)
-        else:
-            show_instructions()
 
 if __name__ == "__main__":
     main()
